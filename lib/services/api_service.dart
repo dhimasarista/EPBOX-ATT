@@ -230,7 +230,7 @@ class ApiService {
     }
   }
 
-  /// Mengirim pengajuan izin atau sakit ke server (selalu multipart).
+  /// Mengirim pengajuan Leave atau Sick ke server (selalu multipart).
   /// [medicalDocument] : foto bukti sakit (opsional, field: 'photo')
   static Future<Map<String, dynamic>> submitLeave(
     String status,
@@ -245,6 +245,7 @@ class ApiService {
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(await _getMultipartHeaders());
       request.fields['status'] = status;
+      print(request.fields['status']);
       request.fields['reason'] = reason;
       if (latitude != null) request.fields['latitude'] = latitude.toString();
       if (longitude != null) request.fields['longitude'] = longitude.toString();

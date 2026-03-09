@@ -51,10 +51,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool get _hasCheckedOut =>
       _todayAttendance != null &&
       _str(_todayAttendance!['check_out_time']) != null;
-  bool get _hasLeaveRequest =>
-      _todayAttendance != null &&
-      (_todayAttendance!['status'] == 'Izin' ||
-          _todayAttendance!['status'] == 'Sakit');
+  bool get _hasLeaveRequest {
+    final s = _str(_todayAttendance?['status'])?.toLowerCase();
+    return s == 'leave' || s == 'sick';
+  }
 
   // Animations
   late final AnimationController _pulseCtrl;
@@ -623,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) {
-        String leaveType = 'Izin';
+        String leaveType = 'Leave';
         XFile? medicalFile;
 
         return StatefulBuilder(
@@ -699,14 +699,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       DropdownButtonFormField<String>(
                         value: leaveType,
                         items: const [
-                          DropdownMenuItem(value: 'Izin', child: Text('Leave')),
                           DropdownMenuItem(
-                            value: 'Sakit',
+                            value: 'Leave',
+                            child: Text('Leave'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Sick',
                             child: Text('Sick Day'),
                           ),
                         ],
                         onChanged: (v) =>
-                            setDialogState(() => leaveType = v ?? 'Izin'),
+                            setDialogState(() => leaveType = v ?? 'Leave'),
                         decoration: InputDecoration(
                           labelText: 'Request Type',
                           filled: true,
@@ -731,8 +734,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         maxLines: 3,
                       ),
 
-                      // ── Medical document (only for Sakit) ──
-                      if (leaveType == 'Sakit') ...[
+                      // ── Medical document (only for Sick) ──
+                      if (leaveType == 'Sick') ...[
                         const SizedBox(height: 16),
                         Text(
                           'Letter of Medical Checkup (optional)',
@@ -1413,7 +1416,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   String _statusText() {
-    if (_hasLeaveRequest) return _str(_todayAttendance!['status']) ?? '-';
+    if (_hasLeaveRequest) {
+      final s = _str(_todayAttendance!['status'])?.toLowerCase();
+      if (s == 'sick') return 'Sick';
+      if (s == 'leave') return 'Leave';
+      return _str(_todayAttendance!['status']) ?? '-';
+    }
     if (_hasCheckedOut) return 'Done';
     if (_hasCheckedIn) return 'Working';
     return 'Not Checked-In';
@@ -2102,14 +2110,16 @@ class _HistoryCard extends StatelessWidget {
   const _HistoryCard({required this.record});
 
   Color _statusColor(String? s) {
-    switch (s) {
-      case 'Hadir':
+    switch (s?.toLowerCase()) {
+      case 'present':
+      case 'hadir':
         return const Color(0xFF16A34A);
-      case 'Izin':
+      case 'leave':
         return const Color(0xFF0F1C3F);
-      case 'Sakit':
+      case 'sick':
         return const Color(0xFFF59E0B);
-      case 'Alpha':
+      case 'alpha':
+      case 'absent':
         return const Color(0xFFDC2626);
       default:
         return const Color(0xFF64748B);
