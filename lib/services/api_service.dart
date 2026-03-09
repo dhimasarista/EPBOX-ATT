@@ -91,7 +91,6 @@ class ApiService {
       final body = employeeId != null && employeeId.isNotEmpty
           ? {'employee_id': employeeId, 'password': password}
           : {'email': email, 'password': password};
-      print(body);
       final response = await http
           .post(
             Uri.parse('$_baseUrl/login'),

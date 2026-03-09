@@ -2014,14 +2014,40 @@ class _HistoriesViewState extends State<_HistoriesView> {
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Text(
-                'Attendance History',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A),
-                ),
+              padding: const EdgeInsets.fromLTRB(16, 20, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Attendance History',
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                  _isLoading
+                      ? const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF0F1C3F),
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          onPressed: _fetch,
+                          icon: const Icon(
+                            Icons.refresh_rounded,
+                            color: Color(0xFF0F1C3F),
+                          ),
+                          tooltip: 'Refresh',
+                        ),
+                ],
               ),
             ),
           ),
