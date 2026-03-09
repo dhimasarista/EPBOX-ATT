@@ -9,10 +9,10 @@ import '../models/user.dart';
 class ApiService {
   // Gunakan 10.0.2.2 jika menggunakan Android Emulator, atau alamat IP WiFi lokal jika menggunakan device riil.
   // Untuk mencoba di device lokal (web/windows desktop), gunakan http://localhost:8000/api
-  static const String _baseUrl = 'http://localhost:8000/api';
+  static const String _baseUrl = 'http://127.0.0.1:8000/api';
 
   /// Base URL untuk mengakses file yang di-upload (storage/app/public).
-  static const String storageBaseUrl = 'http://localhost:8000/storage';
+  static const String storageBaseUrl = 'http://127.0.0.1:8000/api/storage';
 
   // --- FUNGSI HELPER (PRIBADI) ---
 
@@ -35,22 +35,29 @@ class ApiService {
   /// Header khusus untuk multipart request (tanpa Content-Type, diset otomatis).
   static Future<Map<String, String>> _getMultipartHeaders() async {
     final token = await _getToken();
-    return {
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
+    return {'Accept': 'application/json', 'Authorization': 'Bearer $token'};
   }
 
   /// Menangani respons error dari API secara umum.
   static Map<String, dynamic> _handleError(dynamic e) {
     if (e is TimeoutException) {
-      return {'success': false, 'message': 'Koneksi timeout. Pastikan server berjalan.'};
+      return {
+        'success': false,
+        'message': 'Connection timeout. Make sure the server is running.',
+      };
     }
     if (e is SocketException) {
-      return {'success': false, 'message': 'Tidak dapat terhubung ke server. Periksa koneksi dan alamat IP.'};
+      return {
+        'success': false,
+        'message':
+            'Cannot connect to server. Check your connection and server address.',
+      };
     }
     print('Error tidak diketahui di ApiService: $e');
-    return {'success': false, 'message': 'Terjadi kesalahan yang tidak diketahui: $e'};
+    return {
+      'success': false,
+      'message': 'Terjadi kesalahan yang tidak diketahui: $e',
+    };
   }
 
   static String _extractErrorMessage(dynamic decodedBody) {
@@ -75,20 +82,26 @@ class ApiService {
   // --- FUNGSI UTAMA (PUBLIK) ---
 
   /// Mengirim permintaan login ke server.
-  static Future<Map<String, dynamic>> login(String email, String password, {String? employeeId}) async {
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password, {
+    String? employeeId,
+  }) async {
     try {
       final body = employeeId != null && employeeId.isNotEmpty
           ? {'employee_id': employeeId, 'password': password}
           : {'email': email, 'password': password};
-        print(body);
-      final response = await http.post(
-        Uri.parse('$_baseUrl/login'),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
+      print(body);
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/login'),
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
 
       dynamic data;
       try {
@@ -147,20 +160,24 @@ class ApiService {
 
       if (photo != null) {
         final bytes = await photo.readAsBytes();
-        request.files.add(http.MultipartFile.fromBytes(
-          'photo',
-          bytes,
-          filename: 'checkin_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'photo',
+            bytes,
+            filename: 'checkin_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          ),
+        );
       }
 
-      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final response = await http.Response.fromStream(streamed);
       print('[checkIn] status=${response.statusCode} body=${response.body}');
       final data = jsonDecode(response.body);
       return {
         'success': response.statusCode == 200 || response.statusCode == 201,
-        'message': data['message'] ?? 'Check-in berhasil.',
+        'message': data['message'] ?? 'Check-in successful.',
       };
     } catch (e) {
       print('Error saat check-in: $e');
@@ -190,38 +207,77 @@ class ApiService {
 
       if (photo != null) {
         final bytes = await photo.readAsBytes();
-        request.files.add(http.MultipartFile.fromBytes(
-          'photo',
-          bytes,
-          filename: 'checkout_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'photo',
+            bytes,
+            filename: 'checkout_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          ),
+        );
       }
 
-      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final response = await http.Response.fromStream(streamed);
       print('[checkOut] status=${response.statusCode} body=${response.body}');
       final data = jsonDecode(response.body);
       return {
         'success': response.statusCode == 200 || response.statusCode == 201,
-        'message': data['message'] ?? 'Check-out berhasil.',
+        'message': data['message'] ?? 'Check-out successful.',
       };
     } catch (e) {
       return _handleError(e);
     }
   }
 
-  /// Mengirim pengajuan izin atau sakit ke server.
-  static Future<Map<String, dynamic>> submitLeave(String status, String reason) async {
+  /// Mengirim pengajuan izin atau sakit ke server (selalu multipart).
+  /// [medicalDocument] : foto bukti sakit (opsional, field: 'photo')
+  static Future<Map<String, dynamic>> submitLeave(
+    String status,
+    String reason, {
+    XFile? medicalDocument,
+    double? latitude,
+    double? longitude,
+    String deviceType = 'unknown',
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/leave'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'status': status, 'reason': reason}),
-      ).timeout(const Duration(seconds: 15));
+      final uri = Uri.parse('$_baseUrl/leave');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(await _getMultipartHeaders());
+      request.fields['status'] = status;
+      request.fields['reason'] = reason;
+      if (latitude != null) request.fields['latitude'] = latitude.toString();
+      if (longitude != null) request.fields['longitude'] = longitude.toString();
+      request.fields['device_type'] = deviceType;
 
+      if (medicalDocument != null) {
+        final bytes = await medicalDocument.readAsBytes();
+        final filename = medicalDocument.name.isNotEmpty
+            ? medicalDocument.name
+            : 'leave_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        request.files.add(
+          http.MultipartFile.fromBytes('photo', bytes, filename: filename),
+        );
+        print(
+          '[submitLeave] attaching photo: $filename (${bytes.length} bytes)',
+        );
+      }
+
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(streamed);
+      print(
+        '[submitLeave] status=${response.statusCode} body=${response.body}',
+      );
       final data = jsonDecode(response.body);
-      return {'success': response.statusCode == 200, 'message': data['message']};
+      return {
+        'success': response.statusCode == 200 || response.statusCode == 201,
+        'message': data['message'] ?? 'Pengajuan berhasil dikirim.',
+      };
     } catch (e) {
+      print('[submitLeave] error: $e');
       return _handleError(e);
     }
   }
@@ -230,18 +286,22 @@ class ApiService {
   /// Kembalian: {'data': Map?} jika sukses, {'error': String} jika gagal.
   static Future<Map<String, dynamic>> getTodayAttendance() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/today'),
-        headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/today'), headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
 
-      print('[getTodayAttendance] status=${response.statusCode} body=${response.body}');
+      print(
+        '[getTodayAttendance] status=${response.statusCode} body=${response.body}',
+      );
 
       dynamic decoded;
       try {
         decoded = jsonDecode(response.body);
       } catch (_) {
-        return {'error': 'Respons server tidak valid (bukan JSON). Status: ${response.statusCode}'};
+        return {
+          'error':
+              'Respons server tidak valid (bukan JSON). Status: ${response.statusCode}',
+        };
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -262,6 +322,49 @@ class ApiService {
       // Non-200: kembalikan pesan error dari API
       final errMsg = _extractErrorMessage(decoded);
       return {'error': 'Server error ${response.statusCode}: $errMsg'};
+    } catch (e) {
+      return {'error': _handleError(e)['message'] as String};
+    }
+  }
+
+  /// Mengambil riwayat absensi (semua record milik user yang login).
+  /// Kembalian: {'data': List} jika sukses, {'error': String} jika gagal.
+  static Future<Map<String, dynamic>> getAttendanceHistory() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/attendances'), headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+
+      print(
+        '[getAttendanceHistory] status=${response.statusCode} body=${response.body}',
+      );
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {
+        return {
+          'error': 'Respons server tidak valid. Status: ${response.statusCode}',
+        };
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (decoded is! Map<String, dynamic>) {
+          return {'error': 'Format respons tidak dikenali.'};
+        }
+        // Terima berbagai key yang mungkin dipakai Laravel
+        final list =
+            decoded['data'] ??
+            decoded['attendances'] ??
+            decoded['history'] ??
+            [];
+        return {'data': list is List ? list : []};
+      }
+
+      return {
+        'error':
+            'Server error ${response.statusCode}: ${_extractErrorMessage(decoded)}',
+      };
     } catch (e) {
       return {'error': _handleError(e)['message'] as String};
     }

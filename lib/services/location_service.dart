@@ -91,7 +91,7 @@ class LocationService {
       return const LocationAvailability(
         status: LocationStatus.serviceDisabled,
         message:
-            'Layanan lokasi (GPS) tidak aktif.\n\nAktifkan GPS di pengaturan perangkat Anda, lalu coba lagi.',
+            'Location service (GPS) is disabled.\n\nEnable GPS in your device settings, then try again.',
       );
     }
 
@@ -114,7 +114,7 @@ class LocationService {
         return const LocationAvailability(
           status: LocationStatus.permissionDenied,
           message:
-              'Izin akses lokasi ditolak.\n\nIzin lokasi diperlukan untuk fitur absensi.',
+              'Location permission denied.\n\nLocation access is required for the attendance feature.',
         );
       case LocationPermission.deniedForever:
         return const LocationAvailability(
@@ -126,7 +126,7 @@ class LocationService {
         // whileInUse atau always → OK
         return const LocationAvailability(
           status: LocationStatus.available,
-          message: 'Lokasi tersedia.',
+          message: 'Location available.',
         );
     }
   }
@@ -153,7 +153,7 @@ class LocationService {
       final result = await getWebLocation();
       if (result != null) return result;
       throw Exception(
-          'Tidak dapat mendapatkan lokasi.\nPastikan izin lokasi browser diizinkan dan coba lagi.');
+          'Unable to get location.\nMake sure browser location permission is allowed and try again.');
     }
 
     // ── Langkah 1: Cek posisi terakhir yang diketahui (instant) ───────

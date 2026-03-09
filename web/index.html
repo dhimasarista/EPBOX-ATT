@@ -18,20 +18,29 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Employee attendance management app by EPBOX.">
 
-  <!-- iOS meta tags & icons -->
+  <!-- PWA / theme -->
+  <meta name="theme-color" content="#0F1C3F">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="absensi_app">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EPBOX Absensi">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/Icon-512.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>absensi_app</title>
+  <title>EPBOX Employee Attendance</title>
   <link rel="manifest" href="manifest.json">
   <style>
+    /* Loading splash */
+    body {
+      background-color: #0F1C3F;
+      margin: 0;
+    }
     /* Sembunyikan file input yang dibuat Flutter/image_picker_for_web
        agar tidak flash saat pertama dimuat.
        Catatan: di web kamera kini menggunakan getUserMedia langsung,

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
 import '../models/user.dart';
+import '../components/uppercase_text.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,7 +13,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _employeeIdController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -38,18 +40,24 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       vsync: this,
       duration: const Duration(milliseconds: 650),
     )..forward();
-    _introOpacity = CurvedAnimation(parent: _introCtrl, curve: Curves.easeOutCubic);
-    _introOffset = Tween<Offset>(begin: const Offset(0, .06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _introCtrl, curve: Curves.easeOutCubic));
+    _introOpacity = CurvedAnimation(
+      parent: _introCtrl,
+      curve: Curves.easeOutCubic,
+    );
+    _introOffset = Tween<Offset>(
+      begin: const Offset(0, .06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _introCtrl, curve: Curves.easeOutCubic));
 
     // Subtle pulse for header emblem
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: .0, end: 6.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulse = Tween<double>(
+      begin: .0,
+      end: 6.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -74,8 +82,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
     try {
       final result = _useEmployeeId
-          ? await ApiService.login('', _passwordController.text, employeeId: _employeeIdController.text.trim())
-          : await ApiService.login(_emailController.text.trim(), _passwordController.text);
+          ? await ApiService.login(
+              '',
+              _passwordController.text,
+              employeeId: _employeeIdController.text.trim(),
+            )
+          : await ApiService.login(
+              _emailController.text.trim(),
+              _passwordController.text,
+            );
 
       if (!mounted) return;
 
@@ -89,7 +104,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           SnackBar(
             content: Text(result['message']),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             margin: const EdgeInsets.all(16),
             backgroundColor: Colors.red.shade700,
           ),
@@ -118,7 +135,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22.0,
+                  vertical: 12,
+                ),
                 child: FadeTransition(
                   opacity: _introOpacity,
                   child: SlideTransition(
@@ -137,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Text(
-                                    'Selamat Datang Kembali',
+                                    'Welcome Back!',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.poppins(
                                       fontSize: 22,
@@ -147,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Login untuk melanjutkan ke akun Anda',
+                                    'Please Login for Attendance',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.poppins(
                                       fontSize: 14,
@@ -165,12 +185,28 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     padding: const EdgeInsets.all(4),
                                     child: Row(
                                       children: [
-                                        _loginTab('Email', Icons.email_outlined, !_useEmployeeId, () {
-                                          setState(() { _useEmployeeId = false; _formKey.currentState?.reset(); });
-                                        }),
-                                        _loginTab('No. Karyawan', Icons.badge_outlined, _useEmployeeId, () {
-                                          setState(() { _useEmployeeId = true; _formKey.currentState?.reset(); });
-                                        }),
+                                        _loginTab(
+                                          'EMAIL',
+                                          Icons.email_outlined,
+                                          !_useEmployeeId,
+                                          () {
+                                            setState(() {
+                                              _useEmployeeId = false;
+                                              _formKey.currentState?.reset();
+                                            });
+                                          },
+                                        ),
+                                        _loginTab(
+                                          'EMPLOYEE ID',
+                                          Icons.badge_outlined,
+                                          _useEmployeeId,
+                                          () {
+                                            setState(() {
+                                              _useEmployeeId = true;
+                                              _formKey.currentState?.reset();
+                                            });
+                                          },
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -179,40 +215,47 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   // Input field (berganti sesuai mode)
                                   AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 220),
-                                    transitionBuilder: (child, anim) => FadeTransition(
-                                      opacity: anim,
-                                      child: SlideTransition(
-                                        position: Tween<Offset>(
-                                          begin: const Offset(0, .05),
-                                          end: Offset.zero,
-                                        ).animate(anim),
-                                        child: child,
-                                      ),
-                                    ),
+                                    transitionBuilder: (child, anim) =>
+                                        FadeTransition(
+                                          opacity: anim,
+                                          child: SlideTransition(
+                                            position: Tween<Offset>(
+                                              begin: const Offset(0, .05),
+                                              end: Offset.zero,
+                                            ).animate(anim),
+                                            child: child,
+                                          ),
+                                        ),
                                     child: _useEmployeeId
                                         ? _buildTextField(
                                             key: const ValueKey('empid'),
                                             controller: _employeeIdController,
-                                            labelText: 'Nomor Karyawan',
-                                            hintText: 'Contoh: EP0001',
+                                            labelText: 'Enter Your Employee ID',
+                                            hintText: 'Example: EP0040',
                                             prefixIcon: Icons.badge_outlined,
                                             keyboardType: TextInputType.text,
                                             validator: (v) {
-                                              if ((v ?? '').trim().isEmpty) return 'Nomor karyawan wajib diisi';
+                                              if ((v ?? '').trim().isEmpty)
+                                                return 'Employee ID required fields';
                                               return null;
                                             },
                                           )
                                         : _buildTextField(
                                             key: const ValueKey('email'),
                                             controller: _emailController,
-                                            labelText: 'Email',
-                                            hintText: 'karyawan@example.com',
+                                            labelText: 'Enter Your Email',
+                                            hintText: 'user@epbox-engg.com',
                                             prefixIcon: Icons.email_outlined,
-                                            keyboardType: TextInputType.emailAddress,
+                                            keyboardType:
+                                                TextInputType.emailAddress,
                                             validator: (v) {
                                               final value = (v ?? '').trim();
-                                              if (value.isEmpty) return 'Email wajib diisi';
-                                              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Format email tidak valid';
+                                              if (value.isEmpty)
+                                                return 'Email required fields';
+                                              if (!RegExp(
+                                                r'^[^@]+@[^@]+\.[^@]+',
+                                              ).hasMatch(value))
+                                                return 'Format email not valid';
                                               return null;
                                             },
                                           ),
@@ -225,18 +268,28 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   const SizedBox(height: 18),
                                   _TapScale(
                                     child: ElevatedButton(
-                                      onPressed: _isLoading ? null : _performLogin,
+                                      onPressed: _isLoading
+                                          ? null
+                                          : _performLogin,
                                       style: ElevatedButton.styleFrom(
                                         elevation: 0,
-                                        backgroundColor: const Color(0xFF2563EB),
+                                        backgroundColor: const Color(
+                                          0xFF0F1C3F,
+                                        ),
                                         foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                         ),
                                       ),
                                       child: AnimatedSwitcher(
-                                        duration: const Duration(milliseconds: 250),
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
                                         switchInCurve: Curves.easeOutBack,
                                         switchOutCurve: Curves.easeIn,
                                         child: _isLoading
@@ -244,7 +297,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                                 key: ValueKey('loader'),
                                                 height: 22,
                                                 width: 22,
-                                                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2.4,
+                                                      color: Colors.white,
+                                                    ),
                                               )
                                             : Text(
                                                 'Login',
@@ -265,8 +322,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           // Tips / footer kecil
                           Center(
                             child: Text(
-                                    'Pastikan ${_useEmployeeId ? 'nomor karyawan' : 'email'} & password sesuai data HR',
-                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.black45),
+                              'Make sure ${_useEmployeeId ? 'Employee ID' : 'Email'} & Password match HR data',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.black45,
+                              ),
                             ),
                           ),
                         ],
@@ -290,11 +350,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF3B82F6), Color(0xFF93C5FD)],
+                      colors: [Color(0xFF0F1C3F), Color(0xFF4A7ABF)],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF60A5FA).withOpacity(0.4),
+                        color: const Color(0xFF1E3A6E).withOpacity(0.4),
                         blurRadius: 4 + _pulse.value,
                       ),
                     ],
@@ -317,10 +377,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
+          colors: [Color(0xFF0F1C3F), Color(0xFF1E3A6E)],
         ),
         boxShadow: [
-          BoxShadow(color: Colors.blue.shade200.withOpacity(0.5), blurRadius: 18, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: const Color(0xFF4A7ABF).withOpacity(0.5),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Stack(
@@ -342,16 +406,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     border: Border.all(color: Colors.white.withOpacity(0.4)),
                   ),
                   child: SvgPicture.asset(
-                    'assets/EPBOX CONDUCTOR.svg',
+                    'assets/EPBOX LOGO.svg',
                     width: 30,
                     height: 30,
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Absensi Karyawan',
+                    'EPBOX ENGINEERING',
                     style: GoogleFonts.poppins(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
@@ -361,7 +428,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -387,11 +457,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(opacity)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(opacity),
+      ),
     );
   }
 
-  Widget _loginTab(String label, IconData icon, bool active, VoidCallback onTap) {
+  Widget _loginTab(
+    String label,
+    IconData icon,
+    bool active,
+    VoidCallback onTap,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -403,20 +481,32 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             color: active ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
             boxShadow: active
-                ? [const BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2))]
+                ? [
+                    const BoxShadow(
+                      color: Color(0x1A000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
                 : [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: active ? const Color(0xFF2563EB) : Colors.grey.shade500),
+              Icon(
+                icon,
+                size: 16,
+                color: active ? const Color(0xFF0F1C3F) : Colors.grey.shade500,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  color: active ? const Color(0xFF2563EB) : Colors.grey.shade500,
+                  color: active
+                      ? const Color(0xFF0F1C3F)
+                      : Colors.grey.shade500,
                 ),
               ),
             ],
@@ -446,6 +536,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         prefixIcon: prefixIcon,
       ),
       style: GoogleFonts.poppins(),
+      inputFormatters: [UpperCaseTextFormatter()],
     );
   }
 
@@ -453,17 +544,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return TextFormField(
       controller: _passwordController,
       obscureText: !_isPasswordVisible,
-      validator: (v) => (v == null || v.isEmpty) ? 'Password wajib diisi' : null,
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Password required fields' : null,
       decoration: _inputDecoration(
-        labelText: 'Password',
-        hintText: 'Masukkan password Anda',
+        labelText: 'Enter Your Password',
+        hintText: 'Must be at least 6 characters',
         prefixIcon: Icons.lock_outline,
         suffix: IconButton(
           icon: Icon(
             _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
             color: Colors.grey.shade500,
           ),
-          onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          onPressed: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
         ),
       ),
       style: GoogleFonts.poppins(),
@@ -491,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        borderSide: const BorderSide(color: Color(0xFF0F1C3F), width: 2),
       ),
       labelStyle: GoogleFonts.poppins(color: Colors.grey.shade700),
       hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
@@ -514,7 +607,11 @@ class _FrostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
-          BoxShadow(color: Color(0x1A000000), blurRadius: 12, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       padding: const EdgeInsets.all(18),
@@ -537,7 +634,7 @@ class _GradientBackground extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment(0, -1.0),
               end: Alignment(0, 0.2),
-              colors: [Color(0xFFEFF6FF), Colors.white],
+              colors: [Color(0xFFEEF2F9), Colors.white],
             ),
           ),
         ),
@@ -553,7 +650,10 @@ class _GradientBackground extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF2563EB).withOpacity(opacity)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF0F1C3F).withOpacity(opacity),
+      ),
     );
   }
 }
@@ -567,15 +667,24 @@ class _TapScale extends StatefulWidget {
   State<_TapScale> createState() => _TapScaleState();
 }
 
-class _TapScaleState extends State<_TapScale> with SingleTickerProviderStateMixin {
+class _TapScaleState extends State<_TapScale>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 110), lowerBound: 0.0, upperBound: 0.04);
-    _anim = Tween<double>(begin: 1.0, end: 0.96).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 110),
+      lowerBound: 0.0,
+      upperBound: 0.04,
+    );
+    _anim = Tween<double>(
+      begin: 1.0,
+      end: 0.96,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -592,7 +701,8 @@ class _TapScaleState extends State<_TapScale> with SingleTickerProviderStateMixi
       onTapUp: (_) => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _anim,
-        builder: (context, child) => Transform.scale(scale: _anim.value, child: child),
+        builder: (context, child) =>
+            Transform.scale(scale: _anim.value, child: child),
         child: widget.child,
       ),
     );

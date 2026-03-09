@@ -38,10 +38,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _liveLocationError;
   StreamSubscription<LocationResult>? _locationSub;
 
+  // Tab index: 0 = Home, 1 = Histori
+  int _selectedIndex = 0;
+
   // Status Absensi
-  bool get _hasCheckedIn => _todayAttendance != null && _todayAttendance!['check_in_time'] != null;
-  bool get _hasCheckedOut => _todayAttendance != null && _todayAttendance!['check_out_time'] != null;
-  bool get _hasLeaveRequest => _todayAttendance != null && (_todayAttendance!['status'] == 'Izin' || _todayAttendance!['status'] == 'Sakit');
+  static String? _str(dynamic v) =>
+      (v == null || v == false || v == '') ? null : v.toString();
+
+  bool get _hasCheckedIn =>
+      _todayAttendance != null &&
+      _str(_todayAttendance!['check_in_time']) != null;
+  bool get _hasCheckedOut =>
+      _todayAttendance != null &&
+      _str(_todayAttendance!['check_out_time']) != null;
+  bool get _hasLeaveRequest =>
+      _todayAttendance != null &&
+      (_todayAttendance!['status'] == 'Izin' ||
+          _todayAttendance!['status'] == 'Sakit');
 
   // Animations
   late final AnimationController _pulseCtrl;
@@ -61,8 +74,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     // Subtle pulse animation for header clock
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.0, end: 6.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulse = Tween<double>(
+      begin: 0.0,
+      end: 6.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     // Fetch today attendance
     _fetchTodayAttendance();
@@ -165,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             const Icon(Icons.location_off, color: Colors.red),
             const SizedBox(width: 8),
-            const Text('Lokasi Tidak Tersedia'),
+            const Text('Location Unavailable'),
           ],
         ),
         content: Text(avail.message),
@@ -180,11 +199,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   LocationService.openLocationSettings();
                 }
               },
-              child: const Text('Buka Pengaturan'),
+              child: const Text('Open Settings'),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -197,28 +216,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           context: context,
           barrierDismissible: false,
           builder: (_) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Row(
               children: [
                 Icon(Icons.warning_amber_rounded, color: Colors.orange),
                 SizedBox(width: 8),
-                Text('Fake GPS Terdeteksi'),
+                Text('Fake GPS Detected'),
               ],
             ),
             content: const Text(
-              'Aplikasi mendeteksi bahwa lokasi Anda berasal dari aplikasi Mock/Fake GPS.\n\n'
-              'Penggunaan Fake GPS dapat melanggar kebijakan absensi perusahaan.\n\n'
-              'Apakah Anda ingin tetap melanjutkan?',
+              'The app detected that your location comes from a Mock/Fake GPS app.\n\n'
+              'Using Fake GPS may violate company attendance policy.\n\n'
+              'Do you want to continue anyway?',
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
+                child: const Text('Cancel'),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Tetap Lanjutkan'),
+                child: const Text('Continue Anyway'),
               ),
             ],
           ),
@@ -229,30 +250,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _handleApiResponse(Map<String, dynamic> result) {
     if (!mounted) return;
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result['message'] ?? 'Berhasil!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Success!'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
       _fetchTodayAttendance();
     } else {
       // Error → tampilkan dialog permanen agar tidak terlewat
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: const [
               Icon(Icons.error_outline, color: Colors.red),
               SizedBox(width: 8),
-              Text('Terjadi Kesalahan'),
+              Text('An Error Occurred'),
             ],
           ),
           content: Text(
-            result['message'] ?? 'Terjadi kesalahan yang tidak diketahui.',
+            result['message'] ?? 'An unknown error occurred.',
             style: GoogleFonts.poppins(fontSize: 14),
           ),
           actions: [
@@ -278,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             r'$owner.TopMost = $true; $owner.WindowState = "Minimized"; $owner.ShowInTaskbar = $false; $owner.Show(); '
             r'$d = New-Object System.Windows.Forms.OpenFileDialog; '
             r'$d.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.webp"; '
-            r'$d.Title = "Pilih Foto Absensi"; '
+            r'$d.Title = "Select Attendance Photo"; '
             r'if ($d.ShowDialog($owner) -eq "OK") { Write-Output $d.FileName } else { Write-Output "" }; '
             r'$owner.Dispose()',
       ]);
@@ -307,8 +334,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final picker = ImagePicker();
     XFile? photo;
 
-    final isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-    final isDesktopNonWindows = !kIsWeb &&
+    final isWindows =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+    final isDesktopNonWindows =
+        !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.linux ||
             defaultTargetPlatform == TargetPlatform.macOS);
     final isDesktop = isWindows || isDesktopNonWindows;
@@ -362,13 +391,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Dialog preview foto setelah capture.
-  Future<_PhotoAction> _showPhotoPreviewDialog(XFile photo, {bool isDesktop = false}) async {
+  Future<_PhotoAction> _showPhotoPreviewDialog(
+    XFile photo, {
+    bool isDesktop = false,
+  }) async {
     return await showDialog<_PhotoAction>(
           context: context,
           barrierDismissible: false,
           builder: (_) => Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 32,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Padding(
@@ -378,21 +415,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     Row(
                       children: [
-                        Icon(isDesktop ? Icons.image : Icons.camera_alt, color: Color(0xFF2563EB)),
+                        Icon(
+                          isDesktop ? Icons.image : Icons.camera_alt,
+                          color: Color(0xFF0F1C3F),
+                        ),
                         const SizedBox(width: 8),
-                        Text(isDesktop ? 'Foto Absensi' : 'Foto Selfie Absensi',
-                            style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w700, fontSize: 16)),
+                        Text(
+                          isDesktop ? 'Attendance Photo' : 'Attendance Selfie',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
                       child: kIsWeb
-                          ? Image.network(photo.path,
-                              height: 280, width: double.infinity, fit: BoxFit.cover)
-                          : Image.file(File(photo.path),
-                              height: 280, width: double.infinity, fit: BoxFit.cover),
+                          ? Image.network(
+                              photo.path,
+                              height: 280,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(photo.path),
+                              height: 280,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
                     ),
                     const SizedBox(height: 14),
                     Row(
@@ -402,13 +454,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onPressed: () =>
                                 Navigator.pop(context, _PhotoAction.retake),
                             icon: const Icon(Icons.refresh, size: 16),
-                            label: Text(isDesktop ? 'Pilih Ulang' : 'Ambil Ulang',
-                                style: GoogleFonts.poppins(fontSize: 13)),
+                            label: Text(
+                              isDesktop ? 'Re-select' : 'Retake',
+                              style: GoogleFonts.poppins(fontSize: 13),
+                            ),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(44),
-                              side: const BorderSide(color: Color(0xFF93C5FD)),
+                              side: const BorderSide(color: Color(0xFF4A7ABF)),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -418,16 +473,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onPressed: () =>
                                 Navigator.pop(context, _PhotoAction.confirm),
                             icon: const Icon(Icons.check, size: 16),
-                            label: Text('Gunakan',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 13, fontWeight: FontWeight.w600)),
+                            label: Text(
+                              'Use Photo',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size.fromHeight(44),
                               elevation: 0,
-                              backgroundColor: const Color(0xFF2563EB),
+                              backgroundColor: const Color(0xFF0F1C3F),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -435,9 +495,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         IconButton(
                           onPressed: () =>
                               Navigator.pop(context, _PhotoAction.cancel),
-                          icon:
-                              const Icon(Icons.close, color: Colors.grey),
-                          tooltip: 'Batalkan',
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          tooltip: 'Cancel',
                         ),
                       ],
                     ),
@@ -495,7 +554,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _handleApiResponse(result);
     } catch (e, st) {
       print('[checkIn] exception: $e\n$st');
-      _handleApiResponse({'success': false, 'message': e.toString().replaceFirst('Exception: ', '')});
+      _handleApiResponse({
+        'success': false,
+        'message': e.toString().replaceFirst('Exception: ', ''),
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -546,7 +608,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _handleApiResponse(result);
     } catch (e, st) {
       print('[checkOut] exception: $e\n$st');
-      _handleApiResponse({'success': false, 'message': e.toString().replaceFirst('Exception: ', '')});
+      _handleApiResponse({
+        'success': false,
+        'message': e.toString().replaceFirst('Exception: ', ''),
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -554,110 +619,299 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onLeaveRequest() {
     final reasonController = TextEditingController();
-    String? leaveType = 'Izin';
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF60A5FA)]),
+      builder: (context) {
+        String leaveType = 'Izin';
+        XFile? medicalFile;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickMedicalFile() async {
+              final picker = ImagePicker();
+              XFile? picked;
+              try {
+                if (!kIsWeb &&
+                    defaultTargetPlatform == TargetPlatform.windows) {
+                  // Windows: pakai helper PowerShell file picker
+                  final path = await _pickFileWindows();
+                  picked = path == null ? null : XFile(path);
+                } else {
+                  picked = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    imageQuality: 80,
+                    maxWidth: 1200,
+                  );
+                }
+              } catch (e) {
+                print('[pickMedicalFile] error: $e');
+              }
+              if (picked != null) {
+                setDialogState(() => medicalFile = picked);
+              }
+            }
+
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF0F1C3F), Color(0xFF1E3A6E)],
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(10),
+                            child: const Icon(
+                              Icons.event_note,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Submit Leave / Sick Day',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      padding: const EdgeInsets.all(10),
-                      child: const Icon(Icons.event_note, color: Colors.white),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text('Ajukan Izin/Sakit',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 18)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: leaveType,
-                  items: ['Izin', 'Sakit'].map((String value) {
-                    return DropdownMenuItem<String>(value: value, child: Text(value));
-                  }).toList(),
-                  onChanged: (newValue) => leaveType = newValue,
-                  decoration: InputDecoration(
-                    labelText: 'Jenis Pengajuan',
-                    filled: true,
-                    fillColor: Colors.blue.withOpacity(0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: leaveType,
+                        items: const [
+                          DropdownMenuItem(value: 'Izin', child: Text('Leave')),
+                          DropdownMenuItem(
+                            value: 'Sakit',
+                            child: Text('Sick Day'),
+                          ),
+                        ],
+                        onChanged: (v) =>
+                            setDialogState(() => leaveType = v ?? 'Izin'),
+                        decoration: InputDecoration(
+                          labelText: 'Request Type',
+                          filled: true,
+                          fillColor: const Color(0xFF0F1C3F).withOpacity(0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: reasonController,
+                        decoration: InputDecoration(
+                          labelText: 'Reason',
+                          alignLabelWithHint: true,
+                          filled: true,
+                          fillColor: const Color(0xFF0F1C3F).withOpacity(0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        maxLines: 3,
+                      ),
+
+                      // ── Medical document (only for Sakit) ──
+                      if (leaveType == 'Sakit') ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Letter of Medical Checkup (optional)',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Upload a photo of a doctor`s letter or proof of illness',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (medicalFile != null) ...[
+                          // ── Preview thumbnail ──
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: kIsWeb
+                                ? Image.network(
+                                    medicalFile!.path,
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Image.file(
+                                    File(medicalFile!.path),
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF22C55E),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  medicalFile!.name.isNotEmpty
+                                      ? medicalFile!.name
+                                      : 'Foto berhasil dipilih',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF0F1C3F),
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    setDialogState(() => medicalFile = null),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'Change',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF4A7ABF),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else
+                          OutlinedButton.icon(
+                            onPressed: pickMedicalFile,
+                            icon: const Icon(Icons.add_a_photo, size: 18),
+                            label: Text(
+                              'Take / Select Evidence',
+                              style: GoogleFonts.poppins(fontSize: 13),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(44),
+                              side: const BorderSide(color: Color(0xFF4A7ABF)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                      ],
+
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                                side: BorderSide(
+                                  color: const Color(0xFF4A7ABF),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.poppins(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (reasonController.text.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Reason cannot be empty.'),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                Navigator.pop(context);
+                                setState(() => _isLoading = true);
+                                // Ambil lokasi saat submit
+                                double? lat;
+                                double? lng;
+                                String deviceType = 'unknown';
+                                try {
+                                  final loc =
+                                      await LocationService.getCurrentLocation();
+                                  lat = loc.latitude;
+                                  lng = loc.longitude;
+                                  deviceType = loc.deviceType;
+                                } catch (e) {
+                                  print('[submitLeave] lokasi gagal: $e');
+                                }
+                                final result = await ApiService.submitLeave(
+                                  leaveType,
+                                  reasonController.text,
+                                  medicalDocument: medicalFile,
+                                  latitude: lat,
+                                  longitude: lng,
+                                  deviceType: deviceType,
+                                );
+                                _handleApiResponse(result);
+                                setState(() => _isLoading = false);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                backgroundColor: const Color(0xFF0F1C3F),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: Text(
+                                'Submit',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonController,
-                  decoration: InputDecoration(
-                    labelText: 'Alasan',
-                    alignLabelWithHint: true,
-                    filled: true,
-                    fillColor: Colors.blue.withOpacity(0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          side: BorderSide(color: Colors.blue.shade300),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: Text('Batal', style: GoogleFonts.poppins()),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (reasonController.text.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Alasan tidak boleh kosong.')),
-                            );
-                            return;
-                          }
-                          Navigator.pop(context);
-                          setState(() => _isLoading = true);
-                          final result = await ApiService.submitLeave(leaveType!, reasonController.text);
-                          _handleApiResponse(result);
-                          setState(() => _isLoading = false);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          backgroundColor: const Color(0xFF2563EB),
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Text('Kirim', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -667,7 +921,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -676,15 +932,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Container(
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF93C5FD)]),
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0F1C3F), Color(0xFF4A7ABF)],
+                    ),
                   ),
                   padding: const EdgeInsets.all(12),
                   child: const Icon(Icons.logout, color: Colors.white),
                 ),
                 const SizedBox(height: 12),
-                Text('Konfirmasi Logout', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 18)),
+                Text(
+                  'Confirm Logout',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text('Anda yakin ingin keluar dari aplikasi?', style: GoogleFonts.poppins(color: Colors.black54)),
+                Text(
+                  'Are you sure you want to log out?',
+                  style: GoogleFonts.poppins(color: Colors.black54),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -693,10 +960,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         onPressed: () => Navigator.of(context).pop(false),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
-                          side: BorderSide(color: Colors.blue.shade300),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          side: BorderSide(color: const Color(0xFF4A7ABF)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        child: Text('Batal', style: GoogleFonts.poppins()),
+                        child: Text('Cancel', style: GoogleFonts.poppins()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -708,13 +977,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           elevation: 0,
                           backgroundColor: const Color(0xFFEF4444),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        child: Text('Logout', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                        child: Text(
+                          'Logout',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -746,13 +1022,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           mainAxisSize: MainAxisSize.min,
           children: [
             SvgPicture.asset(
-              'assets/EPBOX CONDUCTOR.svg',
-              width: 32,
-              height: 32,
-              colorFilter: const ColorFilter.mode(Color(0xFF0F172A), BlendMode.srcIn),
+              'assets/EPBOX LOGO.svg',
+              width: 124,
+              // height: 32,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF0F172A),
+                BlendMode.srcIn,
+              ),
             ),
-            const SizedBox(width: 8),
-            Text('Absensi Karyawan', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+            // const SizedBox(width: 8),
+            // Text(
+            //   'Attendance',
+            //   style: GoogleFonts.poppins(
+            //     fontWeight: FontWeight.bold,
+            //     color: const Color(0xFF0F172A),
+            //   ),
+            // ),
           ],
         ),
         actions: [
@@ -760,29 +1045,75 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onPressed: _logout,
             icon: const Icon(Icons.logout, color: Color(0xFF64748B)),
             tooltip: 'Logout',
-          )
+          ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _fetchTodayAttendance,
-        color: const Color(0xFF2563EB),
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 20),
-            _buildQuickStats(),
-            const SizedBox(height: 16),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeIn,
-              child: _isLoading
-                  ? const _LoadingCard(key: ValueKey('loading'))
-                  : _buildActionButtons(key: const ValueKey('actions')),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          // ── Tab 0: Home ───────────────────────────────────────────────
+          RefreshIndicator(
+            onRefresh: _fetchTodayAttendance,
+            color: const Color(0xFF0F1C3F),
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 20),
+                _buildQuickStats(),
+                const SizedBox(height: 16),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeIn,
+                  child: _isLoading
+                      ? const _LoadingCard(key: ValueKey('loading'))
+                      : _buildActionButtons(key: const ValueKey('actions')),
+                ),
+                const SizedBox(height: 16),
+                _buildAttendanceInfo(),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildAttendanceInfo(),
+          ),
+          // ── Tab 1: Histori ────────────────────────────────────────────
+          _HistoriesView(user: widget.user),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 12,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (i) => setState(() => _selectedIndex = i),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: const Color(0xFF0F1C3F),
+          unselectedItemColor: const Color(0xFF94A3B8),
+          selectedLabelStyle: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history_outlined),
+              activeIcon: Icon(Icons.history_rounded),
+              label: 'History',
+            ),
           ],
         ),
       ),
@@ -798,10 +1129,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
+          colors: [Color(0xFF0F1C3F), Color(0xFF1E3A6E)],
         ),
         boxShadow: [
-          BoxShadow(color: Colors.blue.shade200.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: const Color(0xFF4A7ABF).withOpacity(0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Stack(
@@ -824,9 +1159,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(0.2),
-                        border: Border.all(color: Colors.white.withOpacity(0.4)),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.4),
+                        ),
                       ),
-                      child: const Icon(Icons.person, color: Colors.white, size: 26),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 26,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -844,7 +1185,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           Text(
-                            DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.now()),
+                            DateFormat(
+                              'EEEE, d MMMM yyyy',
+                              'id_ID',
+                            ).format(DateTime.now()),
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: Colors.white.withOpacity(0.8),
@@ -866,7 +1210,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       // ── KIRI: Lokasi & Akurasi ──
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(14),
@@ -877,10 +1224,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.location_on, color: Colors.white70, size: 13),
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: Colors.white70,
+                                    size: 13,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Lokasi',
+                                    'Location',
                                     style: GoogleFonts.poppins(
                                       fontSize: 11,
                                       color: Colors.white70,
@@ -891,7 +1242,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               const SizedBox(height: 4),
                               if (_liveLocationLoading && loc == null)
                                 Text(
-                                  'Mencari...',
+                                  'Searching...',
                                   style: GoogleFonts.spaceMono(
                                     fontSize: 11,
                                     color: Colors.white.withOpacity(0.7),
@@ -899,7 +1250,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 )
                               else if (loc == null)
                                 Text(
-                                  'Tidak tersedia',
+                                  'Unavailable',
                                   style: GoogleFonts.spaceMono(
                                     fontSize: 11,
                                     color: Colors.white.withOpacity(0.6),
@@ -925,7 +1276,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(Icons.radar, color: Colors.white60, size: 12),
+                                    const Icon(
+                                      Icons.radar,
+                                      color: Colors.white60,
+                                      size: 12,
+                                    ),
                                     const SizedBox(width: 3),
                                     Text(
                                       loc.accuracy != null
@@ -951,7 +1306,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         animation: _pulse,
                         builder: (context, _) {
                           return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(14),
@@ -966,8 +1324,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.access_time_rounded,
-                                    color: Colors.white70, size: 14),
+                                const Icon(
+                                  Icons.access_time_rounded,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   _currentTime,
@@ -1010,47 +1371,75 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final items = <_StatItem>[
       _StatItem(icon: Icons.place, label: 'Geo-Check', note: 'Aktif'),
       _StatItem(icon: Icons.verified, label: 'Status', note: _statusText()),
-      _StatItem(icon: Icons.calendar_today, label: 'Hari Ini', note: DateFormat('dd/MM').format(DateTime.now())),
+      _StatItem(
+        icon: Icons.calendar_today,
+        label: 'Today',
+        note: DateFormat('dd/MM').format(DateTime.now()),
+      ),
     ];
 
     return Row(
       children: items
-          .map((e) => Expanded(
-                child: _FrostCard(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(e.icon, color: const Color(0xFF2563EB)),
-                      const SizedBox(height: 8),
-                      Text(e.label, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 2),
-                      Text(e.note, style: GoogleFonts.poppins(color: Colors.black54, fontSize: 12)),
-                    ],
-                  ),
+          .map(
+            (e) => Expanded(
+              child: _FrostCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(e.icon, color: const Color(0xFF0F1C3F)),
+                    const SizedBox(height: 8),
+                    Text(
+                      e.label,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      e.note,
+                      style: GoogleFonts.poppins(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-              ))
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   String _statusText() {
-    if (_hasLeaveRequest) return _todayAttendance!['status'];
-    if (_hasCheckedOut) return 'Selesai';
-    if (_hasCheckedIn) return 'Sedang Bekerja';
-    return 'Belum Check-In';
-    }
+    if (_hasLeaveRequest) return _str(_todayAttendance!['status']) ?? '-';
+    if (_hasCheckedOut) return 'Done';
+    if (_hasCheckedIn) return 'Working';
+    return 'Not Checked-In';
+  }
 
   Widget _buildActionButtons({Key? key}) {
     if (_hasCheckedOut || _hasLeaveRequest) {
       return _FrostCard(
         key: key,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Aktivitas absensi hari ini sudah selesai.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(fontSize: 15, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 0),
+              child: Text(
+                "Today's attendance activity is complete.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  color: const Color.fromARGB(255, 1, 243, 150),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -1059,11 +1448,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       key: key,
       child: Column(
         children: [
-          if (!_hasCheckedIn) _primaryButton(
-            label: 'CHECK IN',
-            icon: Icons.login_rounded,
-            onPressed: _onCheckIn,
-          ),
+          if (!_hasCheckedIn)
+            _primaryButton(
+              label: 'CHECK IN',
+              icon: Icons.login_rounded,
+              onPressed: _onCheckIn,
+            ),
           if (_hasCheckedIn && !_hasCheckedOut)
             _primaryButton(
               label: 'CHECK OUT',
@@ -1074,7 +1464,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 10),
           if (!_hasCheckedIn)
             _ghostButton(
-              label: 'Tidak Masuk? Ajukan Izin/Sakit',
+              label: 'Absent? Submit Leave / Sick Day',
               icon: Icons.edit_document,
               onPressed: _onLeaveRequest,
             ),
@@ -1089,18 +1479,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required VoidCallback onPressed,
     bool isWarning = false,
   }) {
-    final bg = isWarning ? const Color(0xFFF59E0B) : const Color(0xFF2563EB);
+    final bg = isWarning ? const Color(0xFFF59E0B) : const Color(0xFF0F1C3F);
     return _TapScale(
       child: ElevatedButton.icon(
         icon: Icon(icon),
-        label: Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+        label: Text(
+          label,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           elevation: 0,
           backgroundColor: bg,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
@@ -1114,12 +1509,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return _TapScale(
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, color: const Color(0xFF2563EB)),
-        label: Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFF2563EB))),
+        icon: Icon(icon, color: const Color(0xFF0F1C3F)),
+        label: Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF0F1C3F),
+          ),
+        ),
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(50),
-          side: const BorderSide(color: Color(0xFF93C5FD)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          side: const BorderSide(color: Color(0xFF4A7ABF)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           backgroundColor: Colors.white,
         ),
       ),
@@ -1134,18 +1537,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             ListTile(
               leading: _iconBadge(Icons.error_outline),
-              title: Text('Gagal memuat data absensi',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.red)),
-              subtitle: Text(_attendanceError!,
-                  style: GoogleFonts.poppins(color: Colors.red.shade300, fontSize: 12)),
+              title: Text(
+                'Failed to load attendance data',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red,
+                ),
+              ),
+              subtitle: Text(
+                _attendanceError!,
+                style: GoogleFonts.poppins(
+                  color: Colors.red.shade300,
+                  fontSize: 12,
+                ),
+              ),
             ),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: _fetchTodayAttendance,
                 icon: const Icon(Icons.refresh, size: 16),
-                label: Text('Coba Lagi', style: GoogleFonts.poppins(fontSize: 13)),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+                label: Text(
+                  'Try Again',
+                  style: GoogleFonts.poppins(fontSize: 13),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF0F1C3F),
+                ),
               ),
             ),
           ],
@@ -1158,9 +1576,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return _FrostCard(
         child: ListTile(
           leading: _iconBadge(Icons.info_outline),
-          title: Text('Belum ada data absensi hari ini.', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-          subtitle: Text('Silakan lakukan Check-In atau ajukan izin/sakit.',
-              style: GoogleFonts.poppins(color: Colors.black54)),
+          title: Text(
+            'No attendance data for today.',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            'Please check in or submit a leave request.',
+            style: GoogleFonts.poppins(color: Colors.black54),
+          ),
         ),
       );
     }
@@ -1175,31 +1598,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               dense: true,
               contentPadding: EdgeInsets.zero,
               leading: _iconBadge(Icons.timeline_rounded),
-              title: Text('Ringkasan Hari Ini',
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700)),
+              title: Text(
+                "Today's Summary",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
             const Divider(height: 20),
-            _infoRow('Status', _todayAttendance!['status']),
+            _infoRow('Status', _str(_todayAttendance!['status']) ?? '-'),
             if (_hasCheckedIn)
-              _infoRow('Jam Masuk',
-                  DateFormat('HH:mm:ss').format(DateTime.parse(_todayAttendance!['check_in_time']))),
+              _infoRow(
+                'Check-In Time',
+                DateFormat('HH:mm:ss').format(
+                  DateTime.parse(_str(_todayAttendance!['check_in_time'])!),
+                ),
+              ),
             if (_hasCheckedOut)
-              _infoRow('Jam Pulang',
-                  DateFormat('HH:mm:ss').format(DateTime.parse(_todayAttendance!['check_out_time']))),
-            if (_hasLeaveRequest) _infoRow('Alasan', _todayAttendance!['reason'] ?? '-'),
+              _infoRow(
+                'Check-Out Time',
+                DateFormat('HH:mm:ss').format(
+                  DateTime.parse(_str(_todayAttendance!['check_out_time'])!),
+                ),
+              ),
+            if (_hasLeaveRequest)
+              _infoRow('Reason', _str(_todayAttendance!['reason']) ?? '-'),
 
-            // ── Foto Check-In ──
-            if (_checkInPhotoWidget() != null) ...
-            [
+            // ── Check-In Photo ──
+            if (_checkInPhotoWidget() != null) ...[
               const SizedBox(height: 14),
-              _photoSection('Foto Check-In', _checkInPhotoWidget()!),
+              _photoSection('Check-In Photo', _checkInPhotoWidget()!),
             ],
 
-            // ── Foto Check-Out ──
-            if (_checkOutPhotoWidget() != null) ...
-            [
+            // ── Check-Out Photo ──
+            if (_checkOutPhotoWidget() != null) ...[
               const SizedBox(height: 10),
-              _photoSection('Foto Check-Out', _checkOutPhotoWidget()!),
+              _photoSection('Check-Out Photo', _checkOutPhotoWidget()!),
             ],
           ],
         ),
@@ -1218,10 +1653,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Prioritas 2: path dari server (check_in_image)
     final raw = _todayAttendance?['check_in_image'] as String?;
     if (raw != null && raw.isNotEmpty) {
-      final url = raw.startsWith('http') ? raw : '${ApiService.storageBaseUrl}/$raw';
-      return Image.network(url, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.broken_image, color: Colors.grey));
+      final url = raw.startsWith('http')
+          ? raw
+          : '${ApiService.storageBaseUrl}/$raw';
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
+      );
     }
     return null;
   }
@@ -1236,10 +1676,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // path dari server (check_out_image)
     final raw = _todayAttendance?['check_out_image'] as String?;
     if (raw != null && raw.isNotEmpty) {
-      final url = raw.startsWith('http') ? raw : '${ApiService.storageBaseUrl}/$raw';
-      return Image.network(url, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.broken_image, color: Colors.grey));
+      final url = raw.startsWith('http')
+          ? raw
+          : '${ApiService.storageBaseUrl}/$raw';
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
+      );
     }
     return null;
   }
@@ -1248,19 +1693,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black54)),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
         const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 180,
-            width: double.infinity,
-            child: image,
-          ),
+          child: SizedBox(height: 180, width: double.infinity, child: image),
         ),
       ],
     );
@@ -1271,15 +1715,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: GoogleFonts.poppins(color: Colors.black54))),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(color: Colors.black54),
+            ),
+          ),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: const Color(0xFFEEF2F9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFF1E40AF))),
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF0F1C3F),
+              ),
+            ),
           ),
         ],
       ),
@@ -1290,7 +1745,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF93C5FD)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F1C3F), Color(0xFF4A7ABF)],
+        ),
       ),
       padding: const EdgeInsets.all(10),
       child: Icon(icon, color: Colors.white),
@@ -1308,12 +1765,17 @@ class _FrostCard extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
-          BoxShadow(color: Color(0x1A000000), blurRadius: 12, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       padding: const EdgeInsets.all(16),
@@ -1321,7 +1783,6 @@ class _FrostCard extends StatelessWidget {
     );
   }
 }
-
 
 /// Tap scale interaction for buttons/cards (subtle animation)
 class _TapScale extends StatefulWidget {
@@ -1332,15 +1793,24 @@ class _TapScale extends StatefulWidget {
   State<_TapScale> createState() => _TapScaleState();
 }
 
-class _TapScaleState extends State<_TapScale> with SingleTickerProviderStateMixin {
+class _TapScaleState extends State<_TapScale>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 120), lowerBound: 0.0, upperBound: 0.05);
-    _anim = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      lowerBound: 0.0,
+      upperBound: 0.05,
+    );
+    _anim = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -1357,7 +1827,8 @@ class _TapScaleState extends State<_TapScale> with SingleTickerProviderStateMixi
       onTapUp: (_) => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _anim,
-        builder: (context, child) => Transform.scale(scale: _anim.value, child: child),
+        builder: (context, child) =>
+            Transform.scale(scale: _anim.value, child: child),
         child: widget.child,
       ),
     );
@@ -1372,7 +1843,9 @@ class _LoadingCard extends StatelessWidget {
     return const _FrostCard(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 14.0),
-        child: Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFF0F1C3F)),
+        ),
       ),
     );
   }
@@ -1392,7 +1865,8 @@ class _CaptureCountdownOverlay extends StatefulWidget {
   const _CaptureCountdownOverlay();
 
   @override
-  State<_CaptureCountdownOverlay> createState() => _CaptureCountdownOverlayState();
+  State<_CaptureCountdownOverlay> createState() =>
+      _CaptureCountdownOverlayState();
 }
 
 class _CaptureCountdownOverlayState extends State<_CaptureCountdownOverlay>
@@ -1409,9 +1883,10 @@ class _CaptureCountdownOverlayState extends State<_CaptureCountdownOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _scaleAnim = Tween<double>(begin: 1.4, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOutBack),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOutBack));
     _runCountdown();
   }
 
@@ -1454,8 +1929,11 @@ class _CaptureCountdownOverlayState extends State<_CaptureCountdownOverlay>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.camera_alt_rounded,
-                        color: Colors.white, size: 56),
+                    const Icon(
+                      Icons.camera_alt_rounded,
+                      color: Colors.white,
+                      size: 56,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       '$_count',
@@ -1468,7 +1946,7 @@ class _CaptureCountdownOverlayState extends State<_CaptureCountdownOverlay>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Siap untuk foto absensi…',
+                      'Ready for attendance selfie…',
                       style: TextStyle(
                         fontSize: 15,
                         color: Colors.white.withOpacity(0.75),
@@ -1478,6 +1956,390 @@ class _CaptureCountdownOverlayState extends State<_CaptureCountdownOverlay>
                 ),
               ),
             ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab Histori: daftar riwayat absensi dari API
+// ─────────────────────────────────────────────────────────────────────────────
+class _HistoriesView extends StatefulWidget {
+  final User user;
+  const _HistoriesView({required this.user});
+
+  @override
+  State<_HistoriesView> createState() => _HistoriesViewState();
+}
+
+class _HistoriesViewState extends State<_HistoriesView> {
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> _records = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final result = await ApiService.getAttendanceHistory();
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      if (result['error'] != null) {
+        _error = result['error'] as String;
+      } else {
+        _records = List<Map<String, dynamic>>.from(
+          (result['data'] as List? ?? []).map(
+            (e) => Map<String, dynamic>.from(e as Map),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: _fetch,
+      color: const Color(0xFF0F1C3F),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text(
+                'Attendance History',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          ),
+          if (_isLoading)
+            const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xFF0F1C3F)),
+              ),
+            )
+          else if (_error != null)
+            SliverFillRemaining(
+              child: _HistoryEmptyState(
+                icon: Icons.cloud_off_rounded,
+                title: 'Failed to load data',
+                subtitle: _error!,
+                action: TextButton.icon(
+                  onPressed: _fetch,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(
+                    'Try Again',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            )
+          else if (_records.isEmpty)
+            SliverFillRemaining(
+              child: _HistoryEmptyState(
+                icon: Icons.inbox_rounded,
+                title: 'No history yet',
+                subtitle: 'Your attendance history will appear here.',
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => _HistoryCard(record: _records[i]),
+                  childCount: _records.length,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  final Map<String, dynamic> record;
+  const _HistoryCard({required this.record});
+
+  Color _statusColor(String? s) {
+    switch (s) {
+      case 'Hadir':
+        return const Color(0xFF16A34A);
+      case 'Izin':
+        return const Color(0xFF0F1C3F);
+      case 'Sakit':
+        return const Color(0xFFF59E0B);
+      case 'Alpha':
+        return const Color(0xFFDC2626);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  String _fmt(String? raw) {
+    if (raw == null) return '-';
+    try {
+      return DateFormat('HH:mm').format(DateTime.parse(raw));
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  String _fmtDate(String? raw) {
+    if (raw == null) return '-';
+    try {
+      return DateFormat('EEE, d MMM yyyy', 'id_ID').format(DateTime.parse(raw));
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = record['status'] as String?;
+    final color = _statusColor(status);
+    final date = record['date'] as String? ?? record['created_at'] as String?;
+    final checkIn = record['check_in_time'] as String?;
+    final checkOut = record['check_out_time'] as String?;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header: tanggal + status badge ──
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _fmtDate(date),
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    status ?? '-',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // ── Jam masuk / jam pulang ──
+            Row(
+              children: [
+                _timeChip(
+                  icon: Icons.login_rounded,
+                  label: 'In',
+                  value: _fmt(checkIn),
+                  color: const Color(0xFF0F1C3F),
+                ),
+                const SizedBox(width: 8),
+                _timeChip(
+                  icon: Icons.logout_rounded,
+                  label: 'Out',
+                  value: _fmt(checkOut),
+                  color: const Color(0xFFF59E0B),
+                ),
+                if (checkIn != null && checkOut != null) ...[
+                  const SizedBox(width: 8),
+                  _durationChip(checkIn, checkOut),
+                ],
+              ],
+            ),
+            if (record['reason'] != null &&
+                (record['reason'] as String).isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                '\u201c${record['reason']}\u201d',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: const Color(0xFF64748B),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _timeChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    color: color.withOpacity(0.8),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _durationChip(String checkIn, String checkOut) {
+    try {
+      final dur = DateTime.parse(checkOut).difference(DateTime.parse(checkIn));
+      final h = dur.inHours;
+      final m = dur.inMinutes % 60;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'Duration',
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                color: const Color(0xFF94A3B8),
+              ),
+            ),
+            Text(
+              '${h}h ${m}m',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+  }
+}
+
+class _HistoryEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? action;
+  const _HistoryEmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFEEF2F9),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Icon(icon, size: 48, color: const Color(0xFF4A7ABF)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+            if (action != null) ...[const SizedBox(height: 16), action!],
+          ],
+        ),
+      ),
     );
   }
 }

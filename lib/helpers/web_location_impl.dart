@@ -1,75 +1,43 @@
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:async';
-// ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import '../services/location_service.dart';
 
 /// Ambil posisi menggunakan Browser Geolocation API secara langsung.
 ///
-/// Keunggulan vs Geolocator di web:
-/// - Bisa set [maximumAge] → browser pakai cached position (instant)
-/// - Bisa set [timeout] di level PositionOptions → tidak perlu outer .timeout()
-/// - Tidak butuh GPS chip; pakai Wi-Fi / IP geolocation
+/// dart:html binds getCurrentPosition as Future<Geoposition> with named
+/// Duration params — jauh lebih mudah dari callback JS.
 ///
-/// Mengembalikan null jika browser menolak izin atau tidak bisa dapat lokasi.
+/// Strategi:
+///   1. Coba cached position (maximumAge=2 menit, timeout=5 detik) → instant
+///   2. Jika tidak ada cache, minta posisi baru (timeout=10 detik)
+///
+/// Mengembalikan null jika izin ditolak atau gagal total.
 Future<LocationResult?> getWebLocation() async {
-  final geolocation = html.window.navigator.geolocation;
+  final geo = html.window.navigator.geolocation;
 
-  // ── 1. Coba posisi cached dulu (maximumAge 2 menit, timeout 5 detik) ──
+  // ── 1. Pakai cached position jika segar (< 2 menit) ──────────────────
   try {
-    final cached = await _getPosition(
-      geolocation,
+    final pos = await geo.getCurrentPosition(
       enableHighAccuracy: false,
-      timeout: 5000,       // ms — browser timeout, bukan Dart
-      maximumAge: 120000,  // 2 menit — pakai cached jika ada
+      timeout: const Duration(seconds: 5),
+      maximumAge: const Duration(minutes: 2),
     );
-    if (cached != null) return _toResult(cached);
+    return _toResult(pos);
   } catch (_) {
-    // Tidak ada cached position → lanjut
+    // Tidak ada cache atau timeout → lanjut ke fresh request
   }
 
-  // ── 2. Minta posisi baru dengan timeout 10 detik ────────────────────
+  // ── 2. Fresh position request ─────────────────────────────────────────
   try {
-    final fresh = await _getPosition(
-      geolocation,
+    final pos = await geo.getCurrentPosition(
       enableHighAccuracy: false,
-      timeout: 10000,  // ms
-      maximumAge: 0,
+      timeout: const Duration(seconds: 10),
+      maximumAge: Duration.zero,
     );
-    if (fresh != null) return _toResult(fresh);
+    return _toResult(pos);
   } catch (_) {
-    // Gagal total
+    return null; // Izin ditolak atau sinyal tidak ada
   }
-
-  return null;
-}
-
-/// Wrapper Promise → Future untuk navigator.geolocation.getCurrentPosition.
-Future<html.Geoposition?> _getPosition(
-  html.Geolocation geo, {
-  required bool enableHighAccuracy,
-  required int timeout,
-  required int maximumAge,
-}) {
-  final completer = Completer<html.Geoposition?>();
-  geo.getCurrentPosition(
-    (pos) {
-      if (!completer.isCompleted) completer.complete(pos);
-    },
-    (err) {
-      if (!completer.isCompleted) completer.complete(null);
-    },
-    {
-      'enableHighAccuracy': enableHighAccuracy,
-      'timeout': timeout,
-      'maximumAge': maximumAge,
-    },
-  );
-  // Safety net sedikit lebih lama dari browser timeout
-  return completer.future.timeout(
-    Duration(milliseconds: timeout + 3000),
-    onTimeout: () => null,
-  );
 }
 
 LocationResult _toResult(html.Geoposition pos) {

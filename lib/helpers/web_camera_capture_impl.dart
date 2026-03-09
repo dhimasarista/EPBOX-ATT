@@ -65,7 +65,7 @@ Future<XFile?> captureWebPhoto() async {
     ''';
 
   final hintText = html.DivElement()
-    ..text = 'Siap untuk foto absensi…'
+    ..text = 'Ready for attendance selfie…'
     ..style.cssText = '''
       color: rgba(255,255,255,0.75);
       font-size: 16px; margin-top: 8px;
