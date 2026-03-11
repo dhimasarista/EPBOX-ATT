@@ -57,6 +57,45 @@
   </style>
 </head>
 <body>
+  <!-- MediaPipe Face Detection (WASM-backed, works in Chrome/Edge/Firefox/Safari) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js" crossorigin="anonymous"></script>
+  <script>
+    window._mpFaceDetector = null;
+    window._mpFaceDetectorReady = false;
+
+    (function initMpFace() {
+      if (typeof FaceDetection === 'undefined') {
+        // Script not yet loaded — retry
+        setTimeout(initMpFace, 200);
+        return;
+      }
+      const fd = new FaceDetection({
+        locateFile: (f) =>
+          'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/' + f,
+      });
+      fd.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
+      fd.initialize().then(() => {
+        window._mpFaceDetector = fd;
+        window._mpFaceDetectorReady = true;
+      }).catch(console.error);
+    })();
+
+    /**
+     * Returns a Promise<number> — the number of faces detected in `imageSource`.
+     * `imageSource` can be an HTMLVideoElement, HTMLCanvasElement, or HTMLImageElement.
+     */
+    window.mpDetectFaces = function(imageSource) {
+      return new Promise(function(resolve) {
+        if (!window._mpFaceDetector) { resolve(0); return; }
+        window._mpFaceDetector.onResults(function(results) {
+          resolve(results.detections ? results.detections.length : 0);
+        });
+        window._mpFaceDetector.send({ image: imageSource }).catch(function() {
+          resolve(0);
+        });
+      });
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

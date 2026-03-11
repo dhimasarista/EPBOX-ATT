@@ -11,6 +11,7 @@ import '../helpers/web_camera_capture.dart';
 import '../models/user.dart';
 import '../services/location_service.dart';
 import '../services/api_service.dart';
+import 'face_camera_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -362,16 +363,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // agar tidak bergantung pada user-gesture aktif saat .click() dipanggil.
           photo = await captureWebPhoto();
         } else {
-          // Android / iOS → countdown Flutter lalu kamera native
-          await requestWebCameraPermission();
+          // Android / iOS → kamera dengan deteksi wajah real-time
+          // Countdown hanya berjalan saat wajah terdeteksi.
           if (!mounted) return null;
-          await _showCaptureCountdown();
-          if (!mounted) return null;
-          photo = await picker.pickImage(
-            source: ImageSource.camera,
-            preferredCameraDevice: CameraDevice.front,
-            imageQuality: 75,
-            maxWidth: 900,
+          photo = await Navigator.push<XFile>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const FaceCameraScreen(),
+              fullscreenDialog: true,
+            ),
           );
         }
       } catch (e) {
@@ -532,10 +532,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (mounted) setState(() => _isLoading = true);
       }
 
-      // 4. Ambil foto selfie (opsional — lanjut meski tidak ada foto)
+      // 4. Ambil foto selfie — wajib, batalkan jika user tutup kamera
       if (mounted) setState(() => _isLoading = false);
       final photo = await _capturePhoto();
-      print('[checkIn] foto: ${photo?.path ?? "tidak ada"}');
+      print('[checkIn] foto: ${photo?.path ?? "dibatalkan"}');
+      if (photo == null) return; // User batal → jangan kirim ke API
       if (mounted) setState(() => _isLoading = true);
 
       // 5. Kirim ke API
@@ -586,10 +587,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (mounted) setState(() => _isLoading = true);
       }
 
-      // 4. Ambil foto selfie (opsional — lanjut meski tidak ada foto)
+      // 4. Ambil foto selfie — wajib, batalkan jika user tutup kamera
       if (mounted) setState(() => _isLoading = false);
       final photo = await _capturePhoto();
-      print('[checkOut] foto: ${photo?.path ?? "tidak ada"}');
+      print('[checkOut] foto: ${photo?.path ?? "dibatalkan"}');
+      if (photo == null) return; // User batal → jangan kirim ke API
       if (mounted) setState(() => _isLoading = true);
 
       // 5. Kirim ke API
@@ -697,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: leaveType,
+                        initialValue: leaveType,
                         items: const [
                           DropdownMenuItem(
                             value: 'Leave',
@@ -1261,7 +1263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 )
                               else ...[
                                 Text(
-                                  '${loc.latitude.toStringAsFixed(5)}',
+                                  loc.latitude.toStringAsFixed(5),
                                   style: GoogleFonts.spaceMono(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -1269,7 +1271,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 Text(
-                                  '${loc.longitude.toStringAsFixed(5)}',
+                                  loc.longitude.toStringAsFixed(5),
                                   style: GoogleFonts.spaceMono(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -1766,7 +1768,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 /// Small frosted/white card with soft shadow & rounded corners
 class _FrostCard extends StatelessWidget {
   final Widget child;
-  const _FrostCard({Key? key, required this.child}) : super(key: key);
+  const _FrostCard({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {

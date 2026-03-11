@@ -235,8 +235,9 @@ class _LoginScreenState extends State<LoginScreen>
                                             prefixIcon: Icons.badge_outlined,
                                             keyboardType: TextInputType.text,
                                             validator: (v) {
-                                              if ((v ?? '').trim().isEmpty)
+                                              if ((v ?? '').trim().isEmpty) {
                                                 return 'Employee ID required fields';
+                                              }
                                               return null;
                                             },
                                           )
@@ -250,12 +251,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                 TextInputType.emailAddress,
                                             validator: (v) {
                                               final value = (v ?? '').trim();
-                                              if (value.isEmpty)
+                                              if (value.isEmpty) {
                                                 return 'Email required fields';
+                                              }
                                               if (!RegExp(
                                                 r'^[^@]+@[^@]+\.[^@]+',
-                                              ).hasMatch(value))
+                                              ).hasMatch(value)) {
                                                 return 'Format email not valid';
+                                              }
                                               return null;
                                             },
                                           ),
@@ -396,52 +399,16 @@ class _LoginScreenState extends State<LoginScreen>
             padding: const EdgeInsets.all(18),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.2),
-                    border: Border.all(color: Colors.white.withOpacity(0.4)),
-                  ),
+                Center(
                   child: SvgPicture.asset(
                     'assets/EPBOX LOGO.svg',
-                    width: 30,
-                    height: 30,
+                    height: 200,
+                    fit: BoxFit.contain,
                     colorFilter: const ColorFilter.mode(
                       Colors.white,
                       BlendMode.srcIn,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'EPBOX ENGINEERING',
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Login',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: .8,
                     ),
                   ),
                 ),
