@@ -6,7 +6,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../helpers/web_camera.dart';
 import '../helpers/web_camera_capture.dart';
 import '../models/user.dart';
 import '../services/location_service.dart';
@@ -46,15 +45,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static String? _str(dynamic v) =>
       (v == null || v == false || v == '') ? null : v.toString();
 
+  bool get _isTodayRecord {
+    if (_todayAttendance == null) return false;
+    try {
+      final dateStr =
+          _str(_todayAttendance!['date']) ??
+          _str(_todayAttendance!['created_at']) ??
+          _str(_todayAttendance!['check_in_time']);
+      if (dateStr != null) {
+        final date = DateTime.parse(dateStr);
+        final now = DateTime.now();
+        return date.year == now.year &&
+            date.month == now.month &&
+            date.day == now.day;
+      }
+    } catch (_) {}
+    return true; // Asumsikan true jika tidak bisa parsing record tanggal
+  }
+
   bool get _hasCheckedIn =>
       _todayAttendance != null &&
+      _isTodayRecord &&
       _str(_todayAttendance!['check_in_time']) != null;
+
   bool get _hasCheckedOut =>
       _todayAttendance != null &&
+      _isTodayRecord &&
       _str(_todayAttendance!['check_out_time']) != null;
+
   bool get _hasLeaveRequest {
-    final s = _str(_todayAttendance?['status'])?.toLowerCase();
-    return s == 'leave' || s == 'sick';
+    if (_todayAttendance == null || !_isTodayRecord) return false;
+    final s = _str(_todayAttendance!['status'])?.toLowerCase();
+    return s == 'leave' ||
+        s == 'unpaid_leave' ||
+        s == 'sick' ||
+        (s == 'special_permission' &&
+            _str(_todayAttendance!['check_in_time']) == null);
   }
 
   // Animations
@@ -625,12 +651,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) {
-        String leaveType = 'Leave';
-        XFile? medicalFile;
+        String leaveType = 'special_permission';
+        XFile? attachmentFile;
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            Future<void> pickMedicalFile() async {
+            Future<void> pickAttachmentFile() async {
               final picker = ImagePicker();
               XFile? picked;
               try {
@@ -647,10 +673,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   );
                 }
               } catch (e) {
-                print('[pickMedicalFile] error: $e');
+                print('[pickAttachmentFile] error: $e');
               }
               if (picked != null) {
-                setDialogState(() => medicalFile = picked);
+                setDialogState(() => attachmentFile = picked);
               }
             }
 
@@ -702,16 +728,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         initialValue: leaveType,
                         items: const [
                           DropdownMenuItem(
-                            value: 'Leave',
-                            child: Text('Leave'),
+                            value: 'special_permission',
+                            child: Text('Special Permission'),
                           ),
                           DropdownMenuItem(
-                            value: 'Sick',
+                            value: 'unpaid_leave',
+                            child: Text('Unpaid Leave'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'sick',
                             child: Text('Sick Day'),
                           ),
                         ],
-                        onChanged: (v) =>
-                            setDialogState(() => leaveType = v ?? 'Leave'),
+                        onChanged: (v) => setDialogState(
+                          () => leaveType = v ?? 'special_permission',
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Request Type',
                           filled: true,
@@ -736,99 +767,135 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         maxLines: 3,
                       ),
 
-                      // ── Medical document (only for Sick) ──
-                      if (leaveType == 'Sick') ...[
+                      // ── Attachment ──
+                      const SizedBox(height: 16),
+                      Text(
+                        leaveType == 'special_permission'
+                            ? 'Proof / Assignment Letter (Required)'
+                            : 'Attachment (Optional)',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        leaveType == 'special_permission'
+                            ? 'Upload photo of assignment letter or supporting documents'
+                            : (leaveType == 'sick'
+                                  ? 'Upload doctor\'s note or a photo if needed'
+                                  : 'Upload supporting document or photo if any'),
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (attachmentFile != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: kIsWeb
+                              ? Image.network(
+                                  attachmentFile!.path,
+                                  height: 160,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.file(
+                                  File(attachmentFile!.path),
+                                  height: 160,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              color: Color(0xFF22C55E),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                attachmentFile!.name.isNotEmpty
+                                    ? attachmentFile!.name
+                                    : 'Attachment selected successfully',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: const Color(0xFF0F1C3F),
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  setDialogState(() => attachmentFile = null),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 0),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                'Change',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: const Color(0xFF4A7ABF),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else
+                        OutlinedButton.icon(
+                          onPressed: pickAttachmentFile,
+                          icon: const Icon(Icons.attach_file, size: 18),
+                          label: Text(
+                            'Select Document / Photo',
+                            style: GoogleFonts.poppins(fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                            side: const BorderSide(color: Color(0xFF4A7ABF)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+
+                      if (leaveType == 'special_permission') ...[
                         const SizedBox(height: 16),
-                        Text(
-                          'Letter of Medical Checkup (optional)',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Upload a photo of a doctor`s letter or proof of illness',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (medicalFile != null) ...[
-                          // ── Preview thumbnail ──
-                          ClipRRect(
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
-                            child: kIsWeb
-                                ? Image.network(
-                                    medicalFile!.path,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Image.file(
-                                    File(medicalFile!.path),
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
+                            border: Border.all(
+                              color: Colors.orange.withOpacity(0.3),
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Row(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF22C55E),
-                                size: 16,
+                                Icons.warning_amber_rounded,
+                                color: Colors.orange,
+                                size: 20,
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  medicalFile!.name.isNotEmpty
-                                      ? medicalFile!.name
-                                      : 'Foto berhasil dipilih',
-                                  overflow: TextOverflow.ellipsis,
+                                  'This submission will record your attendance immediately. Remember to Check Out when you return to the office.',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: const Color(0xFF0F1C3F),
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    setDialogState(() => medicalFile = null),
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: const Size(0, 0),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(
-                                  'Change',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: const Color(0xFF4A7ABF),
+                                    fontSize: 12,
+                                    color: Colors.orange.shade800,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ] else
-                          OutlinedButton.icon(
-                            onPressed: pickMedicalFile,
-                            icon: const Icon(Icons.add_a_photo, size: 18),
-                            label: Text(
-                              'Take / Select Evidence',
-                              style: GoogleFonts.poppins(fontSize: 13),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(44),
-                              side: const BorderSide(color: Color(0xFF4A7ABF)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
+                        ),
                       ],
 
                       const SizedBox(height: 20),
@@ -864,15 +931,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   );
                                   return;
                                 }
+                                // Attachment validation for special_permission
+                                if (leaveType == 'special_permission' &&
+                                    attachmentFile == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Proof or Supporting Document is required for Special Permission.',
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 Navigator.pop(context);
                                 setState(() => _isLoading = true);
-                                // Ambil lokasi saat submit
+                                // Ambil lokasi live (sudah sama dengan checkout API call logic)
                                 double? lat;
                                 double? lng;
                                 String deviceType = 'unknown';
                                 try {
+                                  // 1. Cek ketersediaan GPS & izin sebelum mulai
+                                  final avail =
+                                      await LocationService.checkAndRequestPermission();
+                                  if (!avail.isAvailable) {
+                                    if (mounted)
+                                      setState(() => _isLoading = false);
+                                    _showLocationErrorDialog(avail);
+                                    return; // Jika lokasi tidak ada, kita batalkan submit
+                                  }
+
+                                  // 2. Ambil posisi
                                   final loc =
                                       await LocationService.getCurrentLocation();
+
+                                  // 3. Jika mock GPS terdeteksi (Android), tampilkan warning
+                                  if (loc.isMockLocation) {
+                                    if (mounted)
+                                      setState(() => _isLoading = false);
+                                    final proceed =
+                                        await _confirmMockLocation();
+                                    if (!proceed) return;
+                                    if (mounted)
+                                      setState(() => _isLoading = true);
+                                  }
+
                                   lat = loc.latitude;
                                   lng = loc.longitude;
                                   deviceType = loc.deviceType;
@@ -882,7 +985,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 final result = await ApiService.submitLeave(
                                   leaveType,
                                   reasonController.text,
-                                  medicalDocument: medicalFile,
+                                  photo: leaveType != 'special_permission'
+                                      ? attachmentFile
+                                      : null,
+                                  proof: leaveType == 'special_permission'
+                                      ? attachmentFile
+                                      : null,
                                   latitude: lat,
                                   longitude: lng,
                                   deviceType: deviceType,
@@ -900,7 +1008,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 foregroundColor: Colors.white,
                               ),
                               child: Text(
-                                'Submit',
+                                leaveType == 'special_permission'
+                                    ? 'Submit & Record Attendance'
+                                    : 'Submit Request',
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1418,19 +1528,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   String _statusText() {
+    if (!_isTodayRecord) return 'Not Checked-In';
     if (_hasLeaveRequest) {
       final s = _str(_todayAttendance!['status'])?.toLowerCase();
       if (s == 'sick') return 'Sick';
-      if (s == 'leave') return 'Leave';
+      if (s == 'leave' || s == 'unpaid_leave') return 'Leave';
+      if (s == 'special_permission') return 'On Special Permission';
       return _str(_todayAttendance!['status']) ?? '-';
     }
     if (_hasCheckedOut) return 'Done';
-    if (_hasCheckedIn) return 'Working';
+    if (_hasCheckedIn) {
+      final s = _str(_todayAttendance!['status'])?.toLowerCase();
+      if (s == 'special_permission') return 'On Special Permission';
+      return 'Working';
+    }
     return 'Not Checked-In';
   }
 
   Widget _buildActionButtons({Key? key}) {
-    if (_hasCheckedOut || _hasLeaveRequest) {
+    if (_hasCheckedOut) {
       return _FrostCard(
         key: key,
         child: Column(
@@ -1454,17 +1570,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
     }
 
+    final status = _str(_todayAttendance?['status'])?.toLowerCase();
+    final isSpecialPermission = status == 'special_permission';
+    final isOtherLeave =
+        status == 'leave' || status == 'unpaid_leave' || status == 'sick';
+
+    if (isOtherLeave) {
+      return _FrostCard(
+        key: key,
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 0),
+              child: Text(
+                "You have an active leave request for today.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  color: const Color.fromARGB(255, 1, 243, 150),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return _FrostCard(
       key: key,
       child: Column(
         children: [
-          if (!_hasCheckedIn)
+          if (!_hasCheckedIn && !isSpecialPermission)
             _primaryButton(
               label: 'CHECK IN',
               icon: Icons.login_rounded,
               onPressed: _onCheckIn,
             ),
-          if (_hasCheckedIn && !_hasCheckedOut)
+          if (_hasCheckedIn || isSpecialPermission)
             _primaryButton(
               label: 'CHECK OUT',
               icon: Icons.logout_rounded,
@@ -1472,7 +1617,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               isWarning: true,
             ),
           const SizedBox(height: 10),
-          if (!_hasCheckedIn)
+          if (!_hasCheckedIn && !isSpecialPermission)
             _ghostButton(
               label: 'Absent? Submit Leave / Sick Day',
               icon: Icons.edit_document,
@@ -1582,7 +1727,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     // ── Empty state ──
-    if (_todayAttendance == null) {
+    if (_todayAttendance == null || !_isTodayRecord) {
       return _FrostCard(
         child: ListTile(
           leading: _iconBadge(Icons.info_outline),

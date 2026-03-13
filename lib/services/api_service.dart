@@ -233,9 +233,10 @@ class ApiService {
   /// Mengirim pengajuan Leave atau Sick ke server (selalu multipart).
   /// [medicalDocument] : foto bukti sakit (opsional, field: 'photo')
   static Future<Map<String, dynamic>> submitLeave(
-    String status,
+    String type,
     String reason, {
-    XFile? medicalDocument,
+    XFile? photo,
+    XFile? proof,
     double? latitude,
     double? longitude,
     String deviceType = 'unknown',
@@ -244,23 +245,35 @@ class ApiService {
       final uri = Uri.parse('$_baseUrl/leave');
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(await _getMultipartHeaders());
-      request.fields['status'] = status;
-      print(request.fields['status']);
+      request.fields['type'] = type;
       request.fields['reason'] = reason;
       if (latitude != null) request.fields['latitude'] = latitude.toString();
       if (longitude != null) request.fields['longitude'] = longitude.toString();
       request.fields['device_type'] = deviceType;
 
-      if (medicalDocument != null) {
-        final bytes = await medicalDocument.readAsBytes();
-        final filename = medicalDocument.name.isNotEmpty
-            ? medicalDocument.name
-            : 'leave_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        final filename = photo.name.isNotEmpty
+            ? photo.name
+            : 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
         request.files.add(
           http.MultipartFile.fromBytes('photo', bytes, filename: filename),
         );
         print(
           '[submitLeave] attaching photo: $filename (${bytes.length} bytes)',
+        );
+      }
+
+      if (proof != null) {
+        final bytes = await proof.readAsBytes();
+        final filename = proof.name.isNotEmpty
+            ? proof.name
+            : 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        request.files.add(
+          http.MultipartFile.fromBytes('proof', bytes, filename: filename),
+        );
+        print(
+          '[submitLeave] attaching proof: $filename (${bytes.length} bytes)',
         );
       }
 
