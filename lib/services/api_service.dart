@@ -5,24 +5,50 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
-  // Gunakan 10.0.2.2 jika menggunakan Android Emulator, atau alamat IP WiFi lokal jika menggunakan device riil.
-  // Untuk mencoba di device lokal (web/windows desktop), gunakan http://localhost:8000/api
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  static const String _authTokenKey = 'auth_token';
+  static const String _authUserKey = 'auth_user';
 
-  /// Base URL untuk mengakses file yang di-upload (storage/app/public).
-  static const String storageBaseUrl = 'http://127.0.0.1:8000/api/storage';
+  static const String _baseUrl = kDebugMode
+      ? 'http://127.0.0.1:8000/api'
+      : 'https://prime.pre-test.my.id/api';
 
-  // --- FUNGSI HELPER (PRIBADI) ---
+  static const String storageBaseUrl = kDebugMode
+      ? 'http://127.0.0.1:8000/api/storage'
+      : 'https://prime.pre-test.my.id/api/storage';
 
-  /// Mengambil token autentikasi dari penyimpanan lokal.
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return prefs.getString(_authTokenKey);
   }
 
-  /// Membuat header standar untuk permintaan API yang memerlukan autentikasi.
+  static Future<bool> hasSavedSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_authTokenKey);
+    final userJson = prefs.getString(_authUserKey);
+    return token != null &&
+        token.isNotEmpty &&
+        userJson != null &&
+        userJson.isNotEmpty;
+  }
+
+  static Future<User?> getSavedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_authUserKey);
+    if (raw == null || raw.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return User.fromJson(decoded);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
   static Future<Map<String, String>> _getHeaders() async {
     final token = await _getToken();
     return {
@@ -32,13 +58,11 @@ class ApiService {
     };
   }
 
-  /// Header khusus untuk multipart request (tanpa Content-Type, diset otomatis).
   static Future<Map<String, String>> _getMultipartHeaders() async {
     final token = await _getToken();
     return {'Accept': 'application/json', 'Authorization': 'Bearer $token'};
   }
 
-  /// Menangani respons error dari API secara umum.
   static Map<String, dynamic> _handleError(dynamic e) {
     if (e is TimeoutException) {
       return {
@@ -79,9 +103,6 @@ class ApiService {
     return 'Terjadi kesalahan saat memproses permintaan.';
   }
 
-  // --- FUNGSI UTAMA (PUBLIK) ---
-
-  /// Mengirim permintaan login ke server.
   static Future<Map<String, dynamic>> login(
     String email,
     String password, {
@@ -113,8 +134,12 @@ class ApiService {
           return {'success': false, 'message': 'Respons server tidak valid.'};
         }
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', data['access_token']);
-        return {'success': true, 'user': User.fromJson(data['user'])};
+        final user = User.fromJson(data['user']);
+
+        await prefs.setString(_authTokenKey, data['access_token']);
+        await prefs.setString(_authUserKey, jsonEncode(user.toJson()));
+
+        return {'success': true, 'user': user};
       } else {
         return {'success': false, 'message': _extractErrorMessage(data)};
       }
@@ -123,7 +148,6 @@ class ApiService {
     }
   }
 
-  /// Mengirim permintaan logout ke server.
   static Future<void> logout() async {
     try {
       await http.post(
@@ -131,16 +155,16 @@ class ApiService {
         headers: await _getHeaders(),
       );
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token');
+      await prefs.remove(_authTokenKey);
+      await prefs.remove(_authUserKey);
     } catch (e) {
       print('Error saat logout: $e');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_authTokenKey);
+      await prefs.remove(_authUserKey);
     }
   }
 
-  /// Mengirim data check-in ke server (multipart/form-data).
-  /// [deviceType] : 'mobile' | 'web' | 'desktop'
-  /// [isMockLocation] : true jika terdeteksi fake GPS (Android)
-  /// [photo] : file foto selfie dari kamera depan
   static Future<Map<String, dynamic>> checkIn({
     required double latitude,
     required double longitude,
@@ -184,10 +208,6 @@ class ApiService {
     }
   }
 
-  /// Mengirim data check-out ke server (multipart/form-data).
-  /// [deviceType] : 'mobile' | 'web' | 'desktop'
-  /// [isMockLocation] : true jika terdeteksi fake GPS (Android)
-  /// [photo] : file foto selfie dari kamera depan
   static Future<Map<String, dynamic>> checkOut({
     required double latitude,
     required double longitude,
@@ -230,8 +250,6 @@ class ApiService {
     }
   }
 
-  /// Mengirim pengajuan Leave atau Sick ke server (selalu multipart).
-  /// [medicalDocument] : foto bukti sakit (opsional, field: 'photo')
   static Future<Map<String, dynamic>> submitLeave(
     String type,
     String reason, {
@@ -295,8 +313,6 @@ class ApiService {
     }
   }
 
-  /// Mengambil data absensi hari ini dari server.
-  /// Kembalian: {'data': Map?} jika sukses, {'error': String} jika gagal.
   static Future<Map<String, dynamic>> getTodayAttendance() async {
     try {
       final response = await http
@@ -321,18 +337,16 @@ class ApiService {
         if (decoded is! Map<String, dynamic>) {
           return {'error': 'Format respons tidak dikenali.'};
         }
-        // Coba berbagai key yang umum dipakai di Laravel
+
         final attendance =
             decoded['data'] ?? decoded['attendance'] ?? decoded['absensi'];
 
-        // Jika key ada tapi isinya bukan Map, berarti belum absen (null OK)
         if (attendance != null && attendance is! Map<String, dynamic>) {
           return {'data': null};
         }
         return {'data': attendance as Map<String, dynamic>?};
       }
 
-      // Non-200: kembalikan pesan error dari API
       final errMsg = _extractErrorMessage(decoded);
       return {'error': 'Server error ${response.statusCode}: $errMsg'};
     } catch (e) {
@@ -340,8 +354,6 @@ class ApiService {
     }
   }
 
-  /// Mengambil riwayat absensi (semua record milik user yang login).
-  /// Kembalian: {'data': List} jika sukses, {'error': String} jika gagal.
   static Future<Map<String, dynamic>> getAttendanceHistory() async {
     try {
       final response = await http
@@ -365,7 +377,7 @@ class ApiService {
         if (decoded is! Map<String, dynamic>) {
           return {'error': 'Format respons tidak dikenali.'};
         }
-        // Terima berbagai key yang mungkin dipakai Laravel
+
         final list =
             decoded['data'] ??
             decoded['attendances'] ??
