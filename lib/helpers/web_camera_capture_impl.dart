@@ -1,11 +1,13 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:async';
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
+// ignore: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-import 'dart:js_util' as js_util;
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'package:web/web.dart' as web;
 
 /// Opens the browser camera with real-time face detection via MediaPipe JS.
 ///
@@ -337,9 +339,12 @@ Future<XFile?> captureWebPhoto() async {
         return;
       }
       try {
-        final int count = await js_util.promiseToFuture<int>(
-          js_util.callMethod(js_util.globalThis, 'mpDetectFaces', [video])
-              as Object,
+        final promise = web.window.callMethod(
+          'mpDetectFaces'.toJS,
+          video as JSAny,
+        );
+        final int count = await (promise as JSPromise<JSNumber>).toDart.then(
+          (value) => value.toDartInt,
         );
         final detected = count > 0;
         if (detected != facePresent) {
@@ -383,10 +388,8 @@ Future<XFile?> captureWebPhoto() async {
 Future<bool> _waitForMp({Duration maxWait = const Duration(seconds: 8)}) async {
   final deadline = DateTime.now().add(maxWait);
   while (DateTime.now().isBefore(deadline)) {
-    final ready = js_util.getProperty<bool>(
-      js_util.globalThis,
-      '_mpFaceDetectorReady',
-    );
+    final readyValue = web.window.getProperty('_mpFaceDetectorReady'.toJS);
+    final ready = readyValue == true.toJS;
     if (ready) return true;
     await Future.delayed(const Duration(milliseconds: 200));
   }
