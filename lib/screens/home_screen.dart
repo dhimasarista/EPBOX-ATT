@@ -592,6 +592,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onCheckOut() async {
     if (!mounted) return;
+
+    final worked = _workedDurationSinceCheckIn();
+    if (worked != null && worked < const Duration(hours: 5)) {
+      final remain = const Duration(hours: 5) - worked;
+      await _showEarlyCheckoutDialog(remain);
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       // 1. Cek ketersediaan GPS & izin sebelum mulai
@@ -643,6 +651,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Duration? _workedDurationSinceCheckIn() {
+    final checkInRaw = _str(_todayAttendance?['check_in_time']);
+    if (checkInRaw == null) return null;
+    try {
+      final checkInTime = DateTime.parse(checkInRaw);
+      return DateTime.now().difference(checkInTime);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final totalMinutes = d.inMinutes;
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    return '${hours}j ${minutes}m';
+  }
+
+  Future<void> _showEarlyCheckoutDialog(Duration remaining) async {
+    if (!mounted) return;
+    final worked = _workedDurationSinceCheckIn() ?? Duration.zero;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.schedule, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Warning'),
+          ],
+        ),
+        content: Text(
+          'Your Working Hours : ${_formatDuration(worked)}.\n\n'
+          'Keep it up!\n',
+          style: GoogleFonts.poppins(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onLeaveRequest() {
@@ -1237,6 +1292,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildHeader() {
     final loc = _liveLocation;
+    final profileUrl = _profilePhotoUrl();
 
     return Container(
       decoration: BoxDecoration(
@@ -1278,10 +1334,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           color: Colors.white.withOpacity(0.4),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 26,
+                      child: ClipOval(
+                        child: profileUrl == null
+                            ? const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 26,
+                              )
+                            : Image.network(
+                                profileUrl,
+                                fit: BoxFit.cover,
+                                width: 46,
+                                height: 46,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1290,9 +1360,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Halo, ${widget.user.name}',
+                            widget.user.name,
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            overflow: TextOverflow.fade,
                             style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -1300,15 +1370,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           Text(
-                            DateFormat(
-                              'EEEE, d MMMM yyyy',
-                              'id_ID',
-                            ).format(DateTime.now()),
+                            "${widget.user.empId} - ${widget.user.email}",
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: Colors.white.withOpacity(0.8),
                             ),
                           ),
+                          //   Text(
+                          //     DateFormat(
+                          //       'EEEE, d MMMM yyyy',
+                          //       'id_ID',
+                          //     ).format(DateTime.now()),
+                          //     style: GoogleFonts.poppins(
+                          //       fontSize: 12,
+                          //       color: Colors.white.withOpacity(0.8),
+                          //     ),
+                          //   ),
                         ],
                       ),
                     ),
@@ -1470,6 +1549,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  String? _profilePhotoUrl() {
+    final raw = _str(widget.user.profilePhoto);
+    if (raw == null) return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final baseUri = Uri.parse(ApiService.storageBaseUrl);
+    final origin = '${baseUri.scheme}://${baseUri.authority}';
+    if (raw.startsWith('/')) return '$origin$raw';
+    if (raw.startsWith('storage/')) return '$origin/$raw';
+    return '${ApiService.storageBaseUrl}/$raw';
+  }
+
   Widget _bubble(double size, double opacity) {
     return Container(
       width: size,
@@ -1484,8 +1574,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildQuickStats() {
     // Small blue/white cards for quick hints
     final items = <_StatItem>[
-      _StatItem(icon: Icons.place, label: 'Geo-Check', note: 'Aktif'),
-      _StatItem(icon: Icons.verified, label: 'Status', note: _statusText()),
+      _StatItem(icon: Icons.place, label: 'Location', note: 'Aktif'),
+      _StatItem(
+        icon: Icons.verified,
+        label: 'Check',
+        note: _checkInOutPointText(),
+      ),
       _StatItem(
         icon: Icons.calendar_today,
         label: 'Today',
@@ -1525,6 +1619,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           )
           .toList(),
     );
+  }
+
+  String _checkInOutPointText() {
+    final inPoint = _hasCheckedIn ? '●' : '○';
+    final outPoint = _hasCheckedOut ? '●' : '○';
+    return '$inPoint IN  $outPoint OUT';
   }
 
   String _statusText() {
