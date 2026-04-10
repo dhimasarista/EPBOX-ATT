@@ -596,8 +596,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final worked = _workedDurationSinceCheckIn();
     if (worked != null && worked < const Duration(hours: 5)) {
       final remain = const Duration(hours: 5) - worked;
-      await _showEarlyCheckoutDialog(remain);
-      return;
+      final action = await _showEarlyCheckoutDialog(remain);
+      if (action == _EarlyCheckoutAction.request) {
+        _onLeaveRequest();
+        return;
+      }
+      if (action != _EarlyCheckoutAction.confirm) {
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -671,33 +677,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return '${hours}j ${minutes}m';
   }
 
-  Future<void> _showEarlyCheckoutDialog(Duration remaining) async {
-    if (!mounted) return;
+  Future<_EarlyCheckoutAction> _showEarlyCheckoutDialog(
+    Duration remaining,
+  ) async {
+    if (!mounted) return _EarlyCheckoutAction.cancel;
     final worked = _workedDurationSinceCheckIn() ?? Duration.zero;
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.schedule, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Warning'),
-          ],
-        ),
-        content: Text(
-          'Your Working Hours : ${_formatDuration(worked)}.\n\n'
-          'Keep it up!\n',
-          style: GoogleFonts.poppins(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Confirm'),
+    return await showDialog<_EarlyCheckoutAction>(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: const [
+                Icon(Icons.schedule, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Warning'),
+              ],
+            ),
+            content: Text(
+              'Your Working Hours : ${_formatDuration(worked)}.\n\n'
+              'You can continue checkout or request manual approval.',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(context, _EarlyCheckoutAction.request),
+                child: const Text('Request'),
+              ),
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(context, _EarlyCheckoutAction.confirm),
+                child: const Text('Confirm'),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ) ??
+        _EarlyCheckoutAction.cancel;
   }
 
   void _onLeaveRequest() {
@@ -1064,7 +1081,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                               child: Text(
                                 leaveType == 'special_permission'
-                                    ? 'Submit & Record Attendance'
+                                    ? 'Submit'
                                     : 'Submit Request',
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
@@ -2115,6 +2132,8 @@ class _StatItem {
 
 enum _PhotoAction { confirm, retake, cancel }
 
+enum _EarlyCheckoutAction { request, confirm, cancel }
+
 /// Overlay countdown penuh layar (2…1 → flash) sebelum kamera terbuka.
 class _CaptureCountdownOverlay extends StatefulWidget {
   const _CaptureCountdownOverlay();
@@ -2537,7 +2556,14 @@ class _HistoryCard extends StatelessWidget {
 
   Widget _durationChip(String checkIn, String checkOut) {
     try {
-      final dur = DateTime.parse(checkOut).difference(DateTime.parse(checkIn));
+      final inTime = DateTime.parse(checkIn);
+      final outTime = DateTime.parse(checkOut);
+      var dur = outTime.difference(inTime);
+
+      if (dur.isNegative) {
+        dur = Duration(minutes: dur.inMinutes.abs());
+      }
+
       final h = dur.inHours;
       final m = dur.inMinutes % 60;
       return Container(

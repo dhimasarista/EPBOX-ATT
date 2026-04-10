@@ -11,11 +11,11 @@ class ApiService {
   static const String _authTokenKey = 'auth_token';
   static const String _authUserKey = 'auth_user';
 
-  static const String _baseUrl = false
+  static const String _baseUrl = kDebugMode
       ? 'http://127.0.0.1:8000/api'
       : 'https://prime.pre-test.my.id/api';
 
-  static const String storageBaseUrl = false
+  static const String storageBaseUrl = kDebugMode
       ? 'http://127.0.0.1:8000/api/storage'
       : 'https://prime.pre-test.my.id/api/storage';
 

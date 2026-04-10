@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart'; // <-- 1. Import ini
 import 'package:absensi_app/screens/login_screen.dart';
@@ -27,7 +28,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Poppins', // Opsional: jika Anda ingin Poppins jadi default
       ),
       home: const _AppBootstrapGate(),
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: kDebugMode,
       // Wrap semua halaman dalam frame mobile di desktop/tablet landscape
       builder: (context, child) => _MobileFrame(child: child!),
     );
